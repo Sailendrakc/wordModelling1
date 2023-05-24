@@ -10,8 +10,14 @@ import os
 # -----------OPTIONS ------------
 # First we provide the necessary options to run
 
+# This is the full path to the folder where books as .txt files are stored
+bookFolderPath = r'C:\Users\saile\OneDrive\Desktop\wordModelling\Books'
+
 #This is the full path to the folder where convo as .txt files are stored [clean childes files]
 convoFolderPath = r'C:\Users\saile\OneDrive\Desktop\wordModelling\cleanChildes'
+
+#This is the number of books to feed the child per day
+booksPerInteraction = 1
 
 #This is the number of convos to feed the child per day
 convoPerInteraction = 2
@@ -54,8 +60,12 @@ outputLog = 'Program Start \n'
 
 def sampleGroupForXdays():
 
-    #Get all convo that are to be used for sampling
+    #Get all convo and books that are to be used for sampling
+    listOfAllBooks =  newUtilities.getAllFilePath(bookFolderPath)
     listOfAllConvos = newUtilities.getAllFilePath(convoFolderPath)
+
+    #All books can be used but there can be age filter for conversation so not all convos can be sampled.
+    listOfBooks = listOfAllBooks
     listOfConvos = []
 
     # Only select convos with child of certain age
@@ -74,7 +84,9 @@ def sampleGroupForXdays():
     #Sampling variables
     interaction = 1
     convoLen = len(listOfConvos)
+    bookLen = len(listOfBooks)
     convoPointer = 0
+    bookPointer = 0
 
     lastBaseSample = None
 
@@ -83,13 +95,14 @@ def sampleGroupForXdays():
     #Now Start Sampling books and apply all options per sampling.
     while interaction <= totalInteractionPerSimulation:
         #Do the sampling.
-        if convoPointer == convoLen:
+
+        if bookPointer == bookLen or convoPointer == convoLen:
             break
 
         #To store a list convo files to perform base sampling
         newBaseList = []
         tempNewConvos = convoPerInteraction
-
+        tempNewBooks = booksPerInteraction
         notEnough = False
 
         # Generate a list of convo files to perform base sampling
@@ -101,7 +114,16 @@ def sampleGroupForXdays():
                 notEnough = True
                 print('Not enought convo to sample, sampling wiil stop')
                 break
-        
+
+        while tempNewBooks > 0:
+            newBaseList.append(listOfBooks[bookPointer])
+            bookPointer += 1
+            tempNewBooks -= 1
+            if bookPointer == bookLen:
+                notEnough = True
+                print('Not enought book to sample, sampling wiil stop')
+                break
+               
         if notEnough:
             break
         global outputLog

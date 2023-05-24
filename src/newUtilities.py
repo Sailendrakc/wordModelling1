@@ -56,7 +56,7 @@ def readTxtData(path: str, lemmatize) -> dobj:
         return wordSet
 
 #This method is used to remove whitespaces and punctuation from a string and it returns a list of words.
-# If lemmatize is set to false, the words will be stemmized, as default, lemmatize is set to true.
+# If lemmatize is set to false, the words will be stemmized, if it is None, no stemming or lemitization will be performed
 def refineLine(line: str, punctuationDict: dict = None, lemmatize = None) -> list:
 
     punc = punctuationDict
