@@ -6,6 +6,7 @@ import math
 import pandas as pd 
 from collections import Counter
 import os
+import time
 
 # -----------OPTIONS ------------
 # First we provide the necessary options to run
@@ -17,19 +18,19 @@ bookFolderPath = r'C:\Users\saile\OneDrive\Desktop\wordModelling\Books'
 convoFolderPath = r'C:\Users\saile\OneDrive\Desktop\wordModelling\cleanChildes'
 
 #This is the number of books to feed the child per day
-booksPerInteraction = 1
+booksPerInteraction = 0
 
 #This is the number of convos to feed the child per day
-convoPerInteraction = 2
+convoPerInteraction = 3
 
 # This is the number of interaction per one simulation.
-totalInteractionPerSimulation =10
+totalInteractionPerSimulation =3
 
 # This is the number of simulation per iteration. All iterations data are averaged.
 totalSimulationPerIteration = 5
 
 # This flag if set to true will print averaged numbers to the console.
-printAveragedNumbers = True
+printAveragedNumbers = False
 
 # When This flag is set to true, lemitize will be performed, when false, stemmizing will be performed,
 # when None, no lemitize or stemming will be performed.
@@ -54,6 +55,10 @@ saveMinifiedDTM = True
 
 # This stores the list of simulations that are sampled using above options
 outputLog = 'Program Start \n'
+
+# This stores the list of test logs.
+testLog = ''
+printTestLog = True
 
 # ----------- INPUT VALIDATION -----------#
 # For now validation will be part of the function that takes that input.
@@ -133,8 +138,13 @@ def sampleGroupForXdays():
         for links in newBaseList:
             outputLog += "    " + links + " \n"
 
+        time11 = time.time()
         #Generate base sampling 
         baseSampling = newUtilities.SampleConversation(newBaseList, lemitize, stopList)
+        time12 = time.time()
+
+        global testLog
+        testLog += " sample convo time taken: " + str(time12-time11) + " \n"
 
         #Perform analysis for later creation of DTM.
 
@@ -160,11 +170,7 @@ def sampleGroupForXdays():
         
         interaction += 1
 
-    # Save the result as a sampling is complete.
-    samplingResult = dobj()
-    samplingResult.baseSimulation = baseSimulation
-
-    return samplingResult
+    return baseSimulation
 
 def SampleGroupForXDaysNTimes():
 
@@ -176,8 +182,21 @@ def SampleGroupForXDaysNTimes():
 
     while ntimes < totalSimulationPerIteration:
         ntimes += 1
+        
+        time11 = time.time()
         simulationResult = sampleGroupForXdays()
-        matrixToPrint = simulationResult.baseSimulation[len(simulationResult.baseSimulation)-1].matrixDf
+        time12 = time.time()
+
+        global testLog
+        testLog += " whole sampling of x days time taken: " + str(time12-time11) + " \n"
+
+        actualInteractionsPerThisSimulation = len(simulationResult)
+
+        if actualInteractionsPerThisSimulation != totalInteractionPerSimulation:
+            print("Actual interactions per simulation is only (due to not enough input): " 
+                  + str(actualInteractionsPerThisSimulation) + " instead of: " + str( totalInteractionPerSimulation ))
+
+        matrixToPrint = simulationResult[actualInteractionsPerThisSimulation -1].matrixDf
         matrixToPrint = newUtilities.findAndAppendLearntDay(matrixToPrint, learnThreshold)
         print(matrixToPrint)
         last_ExposureMatrix_of_eachSimulations.append(matrixToPrint)
@@ -186,7 +205,7 @@ def SampleGroupForXDaysNTimes():
         print(" \n" + str(ntimes) + " simulation done. \n")
 
 
-        for days in range(0, totalInteractionPerSimulation):
+        for days in range(0, actualInteractionsPerThisSimulation):
 
             if len(baseIterationNumbers) == days:
 
@@ -198,7 +217,7 @@ def SampleGroupForXDaysNTimes():
 
                 baseIterationNumbers.append(baseDobj)
 
-            #Adding all day1's and day2's .... dayN's unique and total word count together for all three sampling types.
+            #Adding all day1's and day2's .... dayN's unique and total word count together.
             # We divide this total number by n times to calculate the average 
 
             #Example:
@@ -212,20 +231,24 @@ def SampleGroupForXDaysNTimes():
 
             #ITERATION Numbers =[Sum(day1's) ,sum(day2's) , sum(day3's), sum(day4's) ,sum(day5's)] #
 
-            baseIterationNumbers[days].totalWordCount += simulationResult.baseSimulation[days].totalWordCount
-            baseIterationNumbers[days].uniqueWordCount += simulationResult.baseSimulation[days].uniqueWordCount
+            baseIterationNumbers[days].totalWordCount += simulationResult[days].totalWordCount
+            baseIterationNumbers[days].uniqueWordCount += simulationResult[days].uniqueWordCount
     
     # Here we divide above summation to calculate average
+    # So,  #ITERATION Numbers =[Sum(day1's) ,sum(day2's) , sum(day3's), sum(day4's) ,sum(day5's)] 
+    # Every items of #ITERATION Numbers are being divided by total number of simulation.
     print("\n Averaging iterations \n")
-    for dayx in range(0, totalInteractionPerSimulation):
-        baseIterationNumbers[dayx].totalWordCount = math.floor(baseIterationNumbers[dayx].totalWordCount / totalSimulationPerIteration)
-
-        baseIterationNumbers[dayx].uniqueWordCount = math.floor(baseIterationNumbers[dayx].uniqueWordCount / totalSimulationPerIteration)
+    divisor = totalSimulationPerIteration
+    for dayx in range(0, actualInteractionsPerThisSimulation):
+        baseIterationNumbers[dayx].totalWordCount = baseIterationNumbers[dayx].totalWordCount / divisor
+        baseIterationNumbers[dayx].uniqueWordCount = baseIterationNumbers[dayx].uniqueWordCount / divisor 
 
     print(outputLog)
-    
-    #Saving in CSV
+    if printTestLog:
+        print("########################### \n")
+        print(testLog)
 
+    #Saving in CSV
     mainExposureMatrix = None
     if saveExposureMatrixAsCSV:
         mainExposureMatrix = newUtilities.dfUnion(last_ExposureMatrix_of_eachSimulations)

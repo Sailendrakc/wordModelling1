@@ -8,12 +8,17 @@ import pandas as pd
 import nltk
 from nltk.stem import PorterStemmer
 from nltk.stem import WordNetLemmatizer
+import spacy
 
 #Lemetizer and Stemmer
 wordnet_lemmatizer = WordNetLemmatizer()
+spacy_lemmatizer = spacy.load("en_core_web_sm")
 porter_stemmer = PorterStemmer()
 
-nltk.download('wordnet')
+# This option when true will use Spacy lemmatizer. Else word Net lemmatizer will be used.
+useSpacy = False;
+
+#nltk.download('wordnet')
 nltk.download('omw-1.4')
 
 # this function returns token, typecount and type set ( unique word list) from a  text file file
@@ -67,18 +72,23 @@ def refineLine(line: str, punctuationDict: dict = None, lemmatize = None) -> lis
         apostrophieUnicode = 39
         del punc[apostrophieUnicode]
 
-    wordList =  line.lower().strip("' ").translate(punc).split()
+    line =  line.lower().strip("' ").translate(punc).strip()
     if lemmatize == None:
-        return wordList
+        return line.split()
     else:
         if lemmatize:
             lemmatizeList = []
-            for word in wordList:
-                lemmatizeList.append(wordnet_lemmatizer.lemmatize(word))
-            return lemmatizeList
+            if useSpacy:
+                spacy_doc = spacy_lemmatizer(line)
+                lemmatizeList = [token.lemma_ for token in spacy_doc]
+                return lemmatizeList
+            else:
+                for word in line.split():
+                    lemmatizeList.append(wordnet_lemmatizer.lemmatize(word))
+                    return lemmatizeList
         else:
             stemmizedList = []
-            for word in wordList:
+            for word in line.split():
                 stemmizedList.append(porter_stemmer.stem(word))
             return stemmizedList
 
@@ -233,7 +243,6 @@ def findAndAppendLearntDay(df, threshold):
             learntDay.append(0)
 
         row_list = row.values.tolist()
-        del row_list[0]
         avg = sum(row_list) / len(row_list)
         average.append(avg);
         realIndex += 1
