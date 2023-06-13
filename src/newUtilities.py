@@ -16,7 +16,11 @@ spacy_lemmatizer = spacy.load("en_core_web_sm")
 porter_stemmer = PorterStemmer()
 
 # This option when true will use Spacy lemmatizer. Else word Net lemmatizer will be used.
-useSpacy = False;
+useSpacy = True;
+
+#This option forces pc to use multiple cores to perform lemmatization while using spacy
+#It is only useful if there are lot of words. Else using multile cores will cause overhead.
+coresForSpacy = 3;
 
 #nltk.download('wordnet')
 nltk.download('omw-1.4')
@@ -48,10 +52,23 @@ def readTxtData(path: str, lemmatize) -> dobj:
             apostrophieUnicode = 39
             del punc[apostrophieUnicode]
 
+            spacyOptimizationList = []
+
             # Read and extract into a set
             for line in file1:
                 word_list_from_line = refineLine(line, punc, lemmatize)
-                wordSet.rawWords.extend(word_list_from_line)
+                if lemmatize and useSpacy:
+                    spacyOptimizationList.append(word_list_from_line)
+                else:
+                    wordSet.rawWords.extend(word_list_from_line)
+
+            if lemmatize and useSpacy:
+                docs = list(spacy_lemmatizer.pipe(spacyOptimizationList, disable=["parser", "ner"]))
+                spacyOptimizedWordList = []
+                for doc in docs:
+                    spacyOptimizedWordList.extend([token.lemma_ for token in doc])
+
+                wordSet.rawWords.extend(spacyOptimizedWordList)
 
         wordSet.uniqueWordSet = set(wordSet.rawWords)
         wordSet.uniqueWordCount = len(wordSet.uniqueWordSet)
@@ -79,9 +96,9 @@ def refineLine(line: str, punctuationDict: dict = None, lemmatize = None) -> lis
         if lemmatize:
             lemmatizeList = []
             if useSpacy:
-                spacy_doc = spacy_lemmatizer(line)
-                lemmatizeList = [token.lemma_ for token in spacy_doc]
-                return lemmatizeList
+                #spacy_doc = spacy_lemmatizer(line)
+                #lemmatizeList = [token.lemma_ for token in spacy_doc]
+                return line
             else:
                 for word in line.split():
                     lemmatizeList.append(wordnet_lemmatizer.lemmatize(word))
